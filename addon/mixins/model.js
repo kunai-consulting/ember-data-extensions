@@ -29,6 +29,11 @@ const resetRelations = function(record) {
     });
   });
   record.set('__recordsJustSaved', []);
+
+  let savedBelongsTo = record.get('__savedBelongsToRecords');
+  savedBelongsTo.forEach((record) => {
+    record.set('_manyToOneDeleted', null);
+  });
   return record;
 };
 

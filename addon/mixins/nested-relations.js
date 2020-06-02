@@ -9,6 +9,7 @@ import { merge } from 'lodash/object';
 // and one not.
 // This is only required for hasMany's
 let savedRecords = {};
+let savedBelongsToRecords = {};
 
 const iterateRelations = function(record, relations, callback) {
   Object.keys(relations).forEach((relationName) => {
@@ -138,11 +139,13 @@ const hasManyData = function(parent, relationName, relatedRecords, subRelations,
   return { data: payloads };
 };
 
-const belongsToData = function(relatedRecord, subRelations, isManyToOneDelete, includedRecords) {
+const belongsToData = function(parent, relatedRecord, subRelations, isManyToOneDelete, includedRecords) {
   let payload = jsonapiPayload(relatedRecord, isManyToOneDelete);
   processRelationships(subRelations, payload, relatedRecord, includedRecords);
   addToIncludes(payload, includedRecords);
-
+  if (isManyToOneDelete) {
+    savedBelongsToRecords.push(parent);
+  }
   return { data: payloadForRelationship(payload) };
 };
 
@@ -152,7 +155,7 @@ const processRelationship = function(parent, name, kind, relationData, subRelati
   if (kind === 'hasMany') {
     payload = hasManyData(parent, name, relationData, subRelations, manyToManyDeleted, includedRecords);
   } else {
-    payload = belongsToData(relationData, subRelations, isManyToOneDelete, includedRecords);
+    payload = belongsToData(parent, relationData, subRelations, isManyToOneDelete, includedRecords);
   }
 
   if (payload && payload.data) {
@@ -199,6 +202,7 @@ const relationshipsDirective = function(value) {
 export default Mixin.create({
   serialize(snapshot/*, options */) {
     savedRecords = [];
+    savedBelongsToRecords = [];
 
     let json = this._super(...arguments);
     let includedRecords = [];
@@ -237,6 +241,7 @@ export default Mixin.create({
         json.included = includedRecords;
       }
       snapshot.record.set('__recordsJustSaved', savedRecords);
+      snapshot.record.set('__savedBelongsToRecords', savedBelongsToRecords);
     }
 
     return json;
